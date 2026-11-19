@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>StreamFind</title>
+
+  <!-- Fonts from Google (needs internet) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@800;900&family=Yellowtail&family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <!-- Our own files -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ===== TOP BAR ===== -->
+  <header class="topbar">
+    <h1 class="logo">Stream<span>Find</span></h1>
+    <span class="badge">Now showing · India</span>
+  </header>
+  <div class="dots"></div>
+
+  <!-- ===== HERO ===== -->
+  <section class="hero">
+    <div class="reel">🎞️</div>
+    <p class="script">Find it.</p>
+    <h2 class="headline">Compare it.<br />Then <em>watch it.</em></h2>
+    <p class="intro">Type a movie to see whether it's streaming in India, and what each platform costs a month, cheapest first.</p>
+  </section>
+
+  <div class="filmstrip"></div>
+
+  <main>
+    <!-- ===== SEARCH BOX ===== -->
+    <section class="box-office">
+      <p class="label">Box office · What are we watching?</p>
+      <div class="search-row">
+        <input id="searchInput" type="text" placeholder="Type a movie name" value="Interstellar" />
+        <button id="searchBtn">Search</button>
+      </div>
+      <div id="quickPicks" class="chips"></div>
+    </section>
+
+    <!-- ===== RESULT (filled by script.js) ===== -->
+    <section id="result"></section>
+
+    <!-- ===== MOOD PICKS ===== -->
+    <section class="moods">
+      <h2 class="mood-title">Not sure what <em>to watch?</em></h2>
+      <p class="intro">Pick a mood. We'll stick to the platforms you've switched on below.</p>
+      <div id="moodChips" class="chips"></div>
+      <div id="moodCards" class="cards"></div>
+    </section>
+
+    <p class="footer">★ ★ ★ ★ ★ StreamFind · Demo data ★ ★ ★ ★</p>
+  </main>
+
+  <!-- ===== "I HAVE" BAR (sticks to the bottom) ===== -->
+  <nav class="have-bar">
+    <span class="have-label">I have</span>
+    <div id="platformChips" class="chips nowrap"></div>
+  </nav>
+
+  <script src="script.js"></script>
+</body>
+</html>
