@@ -162,3 +162,32 @@ main, .hero, .topbar { max-width: 640px; margin: 0 auto; padding: 0 20px; }
   .headline { font-size: 2.6rem; }
   .script { font-size: 4.2rem; }
 }
+/* ===== LAPTOP / WIDE SCREENS (900px and wider) ===== */
+@media (min-width: 900px) {
+  /* wider content area */
+  main, .hero, .topbar { max-width: 1100px; padding-left: 40px; padding-right: 40px; }
+
+  /* bigger hero text, with the film reel on the right */
+  .hero { padding-top: 70px; padding-bottom: 60px; }
+  .script { font-size: 8rem; }
+  .headline { font-size: 5.5rem; }
+  .intro { max-width: 560px; font-size: 1.3rem; }
+  .reel { font-size: 14rem; right: 60px; top: 20px; }
+
+  /* search box a bit narrower so it doesn't stretch too much */
+  .box-office { max-width: 800px; }
+
+  /* result: title and message on top, tickets in 2 columns */
+  #result { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; }
+  .movie-title, .note { grid-column: 1 / -1; }
+
+  /* mood cards: 4 in a row */
+  .cards { grid-template-columns: repeat(4, 1fr); }
+  .mood-title { font-size: 3.5rem; }
+
+  /* "I have" bar centred and not stretched across the whole screen */
+  .have-bar {
+    left: 50%; right: auto; transform: translateX(-50%);
+    width: min(1100px, calc(100% - 24px));
+  }
+}
