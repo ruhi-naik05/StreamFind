@@ -1,7 +1,4 @@
-// ===================== DEMO DATA =====================
-// In your real project, this comes from your Flask backend (TMDB API).
-// Example: fetch("/api/search?q=" + query).then(r => r.json())
-
+// ===================== PLATFORMS & DEMO DATA =====================
 const PLATFORMS = {
   netflix: { name: "Netflix",     price: 199, url: "https://www.netflix.com" },
   prime:   { name: "Prime Video", price: 149, url: "https://www.primevideo.com" },
@@ -10,7 +7,8 @@ const PLATFORMS = {
   sonyliv: { name: "SonyLIV",     price: 99,  url: "https://www.sonyliv.com" }
 };
 
-// on: [] means NOT released in India yet -> shows the estimate + notify card
+const PLATFORM_KEYS = Object.keys(PLATFORMS);
+
 const MOVIES = [
   { title: "Monsoon Express", genre: "Thriller",    meta: "2024 · Thriller · 2h 05m",
     overview: "A night train, a missing ledger and twelve passengers who all have a reason to lie.",
@@ -38,8 +36,8 @@ const MOVIES = [
 const FLOATING_MOVIES = [
   "Monsoon Express",
   "The Last Reel",
-  "Northern Lights",
-  "Midnight Ferry"
+  "Interstellar",
+  "Northern Lights"
 ];
 
 const MOODS = {
@@ -50,21 +48,185 @@ const MOODS = {
   Romantic: "Sweet stories for a cosy night."
 };
 
+const GENRE_TO_MOOD = {
+  "Action & Adventure": "Excited",
+  "Thriller": "Excited",
+  "Sci-Fi & Fantasy": "Excited",
+  "Comedy": "Happy",
+  "Family": "Happy",
+  "Animation": "Happy",
+  "Drama": "Sad",
+  "Romance": "Romantic",
+  "Documentary": "Relaxed"
+};
+
 // ===================== STATE =====================
 const state = {
   query: "Monsoon Express",
   mood: "Happy",
-  subs: { prime: true },   // platforms the user already subscribes to
-  notified: {}             // movies the user wants alerts for
+  subs: { prime: true },
+  notified: {},
+  currentMovie: null,
+  loading: false,
+  searchToken: 0
 };
 
 const $ = (id) => document.getElementById(id);
 
 // ===================== HELPERS =====================
-function findMovie() {
-  const q = state.query.trim().toLowerCase();
-  if (!q) return null;
-  return MOVIES.find((m) => m.title.toLowerCase().includes(q));
+function hashString(str) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function formatDuration(ms) {
+  if (!ms || ms <= 0) return null;
+  const totalMins = Math.round(ms / 60000);
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  return h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
+}
+
+function assignPlatformsForTitle(title) {
+  const seed = hashString(title.toLowerCase());
+  const count = 2 + (seed % 3);
+  return PLATFORM_KEYS
+    .map((_, idx) => PLATFORM_KEYS[(seed + idx * 2) % PLATFORM_KEYS.length])
+    .slice(0, count);
+}
+
+function findLocalMovie(q) {
+  const clean = q.trim().toLowerCase();
+  if (!clean) return null;
+  return (
+    MOVIES.find((m) => m.title.toLowerCase() === clean) ||
+    MOVIES.find((m) => m.title.toLowerCase().includes(clean)) ||
+    null
+  );
+}
+
+async function fetchItunesMeta(query) {
+  const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&country=IN&media=movie&limit=5`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const data = await res.json();
+  const item = (data.results || []).find((r) => r.trackName);
+  if (!item) return null;
+
+  return {
+    title: item.trackName,
+    year: item.releaseDate ? new Date(item.releaseDate).getFullYear() : null,
+    genre: item.primaryGenreName || null,
+    duration: formatDuration(item.trackTimeMillis),
+    overview: item.longDescription || item.shortDescription || ""
+  };
+}
+
+async function fetchWikiPlot(title) {
+  const candidates = [`${title} (film)`, title];
+  for (const candidate of candidates) {
+    try {
+      const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(candidate)}`;
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.extract && data.type !== "disambiguation") {
+        // Keep the plot concise (up to 2 sentences)
+        const sentences = data.extract.match(/[^.!?]+[.!?]+/g) || [data.extract];
+        const shortPlot = sentences.slice(0, 2).join(" ").trim();
+        const yearMatch = data.extract.match(/\b(19\d{2}|20\d{2})\b/);
+        return {
+          title: data.title.replace(/\s*\(film\)$/i, ""),
+          plot: shortPlot,
+          year: yearMatch ? Number(yearMatch[1]) : null
+        };
+      }
+    } catch {
+      // Try next candidate
+    }
+  }
+  return null;
+}
+
+async function fetchExternalMovie(query) {
+  const [itunes, wiki] = await Promise.all([
+    fetchItunesMeta(query).catch(() => null),
+    fetchWikiPlot(query).catch(() => null)
+  ]);
+
+  if (!itunes && !wiki) return null;
+
+  const title = (itunes && itunes.title) || (wiki && wiki.title) || query.trim();
+  const overview =
+    (wiki && wiki.plot) ||
+    (itunes && itunes.overview) ||
+    `Plot details for "${title}" are not currently listed in the catalog.`;
+
+  const year = (itunes && itunes.year) || (wiki && wiki.year) || null;
+  const genre = (itunes && itunes.genre) || "Movie";
+  const duration = (itunes && itunes.duration) || null;
+  const metaParts = [year, genre, duration].filter(Boolean);
+
+  return {
+    title,
+    genre,
+    meta: metaParts.join(" · "),
+    overview,
+    on: assignPlatformsForTitle(title),
+    moods: [GENRE_TO_MOOD[genre] || "Excited"]
+  };
+}
+
+function createFallbackMovie(query) {
+  const cleanTitle = query.trim();
+  return {
+    title: cleanTitle,
+    genre: "Movie",
+    meta: "Movie",
+    overview: `Synopsis for "${cleanTitle}" is currently unavailable.`,
+    on: assignPlatformsForTitle(cleanTitle),
+    moods: [state.mood || "Excited"]
+  };
+}
+
+async function resolveSearch(query) {
+  const trimmed = query.trim();
+  const token = ++state.searchToken;
+
+  if (!trimmed) {
+    state.currentMovie = null;
+    state.loading = false;
+    render();
+    return;
+  }
+
+  const local = findLocalMovie(trimmed);
+  if (local) {
+    state.currentMovie = local;
+    state.loading = false;
+    render();
+    return;
+  }
+
+  state.loading = true;
+  renderResult();
+
+  try {
+    const ext = await fetchExternalMovie(trimmed);
+    if (token !== state.searchToken) return;
+    state.currentMovie = ext || createFallbackMovie(trimmed);
+  } catch {
+    if (token !== state.searchToken) return;
+    state.currentMovie = createFallbackMovie(trimmed);
+  } finally {
+    if (token === state.searchToken) {
+      state.loading = false;
+      render();
+    }
+  }
 }
 
 function chip(label, active, action, value) {
@@ -74,9 +236,11 @@ function chip(label, active, action, value) {
 
 // ===================== RENDER =====================
 function renderFloatingMovies() {
-  const activeMovie = findMovie();
+  const activeTitle = state.currentMovie ? state.currentMovie.title.toLowerCase() : "";
   $("floatingMovies").innerHTML = FLOATING_MOVIES.map((title) => {
-    const isActive = activeMovie && activeMovie.title === title;
+    const isActive =
+      activeTitle === title.toLowerCase() ||
+      state.query.trim().toLowerCase() === title.toLowerCase();
     return `<button type="button" class="float-movie ${isActive ? "active" : ""}"
               aria-pressed="${!!isActive}" data-action="pick" data-value="${title}">${title}</button>`;
   }).join("");
@@ -93,7 +257,6 @@ function renderSubs() {
   }).join("");
 }
 
-// Platform rows: cheapest first. Already-subscribed platforms cost 0 extra.
 function platformRows(movie) {
   return movie.on
     .map((id) => {
@@ -159,13 +322,21 @@ function upcomingHTML(movie) {
 }
 
 function renderResult() {
-  const movie = findMovie();
   const box = $("result");
 
+  if (state.loading) {
+    box.innerHTML = `<div class="empty">
+        <h2>Searching for “${state.query.trim()}”…</h2>
+        <p class="muted">Fetching movie details and streaming options.</p>
+      </div>`;
+    return;
+  }
+
+  const movie = state.currentMovie;
   if (!movie) {
     box.innerHTML = `<div class="empty">
-        <h2>No match for “${state.query}”</h2>
-        <p class="muted">Check the spelling or tap one of the movie pills above.</p>
+        <h2>Type a movie or show name</h2>
+        <p class="muted">Search any title above or tap one of the quick movie pills.</p>
       </div>`;
     return;
   }
@@ -188,7 +359,19 @@ function renderMood() {
   $("moods").innerHTML = Object.keys(MOODS)
     .map((m) => chip(m, state.mood === m, "mood", m)).join("");
 
-  $("recs").innerHTML = MOVIES.filter((m) => m.moods.includes(state.mood)).map((m) => {
+  const pool = [...MOVIES];
+  if (
+    state.currentMovie &&
+    state.currentMovie.on.length > 0 &&
+    !pool.some((m) => m.title.toLowerCase() === state.currentMovie.title.toLowerCase())
+  ) {
+    pool.push(state.currentMovie);
+  }
+
+  const matches = pool.filter((m) => m.moods.includes(state.mood));
+  const list = matches.length > 0 ? matches : pool.slice(0, 3);
+
+  $("recs").innerHTML = list.map((m) => {
     const out = m.on.length > 0;
     const from = out ? Math.min(...m.on.map((id) => PLATFORMS[id].price)) : 0;
     const status = out
@@ -214,7 +397,7 @@ function render() {
 // ===================== EVENTS =====================
 function search() {
   state.query = $("searchInput").value;
-  render();
+  resolveSearch(state.query);
 }
 
 $("searchBtn").addEventListener("click", search);
@@ -232,20 +415,25 @@ document.addEventListener("click", (e) => {
     case "rec":
       state.query = value;
       $("searchInput").value = value;
+      resolveSearch(value);
       break;
     case "sub":
       state.subs[value] = !state.subs[value];
+      render();
       break;
     case "mood":
       state.mood = value;
+      renderMood();
       break;
     case "notify": {
-      const movie = findMovie();
-      if (movie) state.notified[movie.title] = !state.notified[movie.title];
+      if (state.currentMovie) {
+        state.notified[state.currentMovie.title] = !state.notified[state.currentMovie.title];
+        renderResult();
+      }
       break;
     }
   }
-  render();
 });
 
-render();
+// Initial load
+resolveSearch(state.query);
