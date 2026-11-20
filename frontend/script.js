@@ -35,7 +35,12 @@ const MOVIES = [
     on: [], estimate: "March 2027", estPlatform: "Prime Video", moods: ["Excited"] }
 ];
 
-const GENRES = ["All", "Thriller", "Drama", "Adventure", "Documentary", "Comedy", "Romance"];
+const FLOATING_MOVIES = [
+  "Monsoon Express",
+  "The Last Reel",
+  "Northern Lights",
+  "Midnight Ferry"
+];
 
 const MOODS = {
   Happy:    "Light, feel-good picks.",
@@ -48,7 +53,6 @@ const MOODS = {
 // ===================== STATE =====================
 const state = {
   query: "Monsoon Express",
-  genre: "All",
   mood: "Happy",
   subs: { prime: true },   // platforms the user already subscribes to
   notified: {}             // movies the user wants alerts for
@@ -57,13 +61,10 @@ const state = {
 const $ = (id) => document.getElementById(id);
 
 // ===================== HELPERS =====================
-function movieMatchesGenre(m) {
-  return state.genre === "All" || m.genre === state.genre;
-}
-
 function findMovie() {
   const q = state.query.trim().toLowerCase();
-  return MOVIES.find((m) => movieMatchesGenre(m) && m.title.toLowerCase().includes(q));
+  if (!q) return null;
+  return MOVIES.find((m) => m.title.toLowerCase().includes(q));
 }
 
 function chip(label, active, action, value) {
@@ -72,13 +73,13 @@ function chip(label, active, action, value) {
 }
 
 // ===================== RENDER =====================
-function renderGenres() {
-  $("genres").innerHTML = GENRES.map((g) => chip(g, state.genre === g, "genre", g)).join("");
-}
-
-function renderQuick() {
-  $("quick").innerHTML = MOVIES.filter(movieMatchesGenre)
-    .map((m) => chip(m.title, false, "quick", m.title)).join("");
+function renderFloatingMovies() {
+  const activeMovie = findMovie();
+  $("floatingMovies").innerHTML = FLOATING_MOVIES.map((title) => {
+    const isActive = activeMovie && activeMovie.title === title;
+    return `<button type="button" class="float-movie ${isActive ? "active" : ""}"
+              aria-pressed="${!!isActive}" data-action="pick" data-value="${title}">${title}</button>`;
+  }).join("");
 }
 
 function renderSubs() {
@@ -163,8 +164,8 @@ function renderResult() {
 
   if (!movie) {
     box.innerHTML = `<div class="empty">
-        <h2>No match for “${state.query || state.genre}”</h2>
-        <p class="muted">Check the spelling or pick one of the suggestions above.</p>
+        <h2>No match for “${state.query}”</h2>
+        <p class="muted">Check the spelling or tap one of the movie pills above.</p>
       </div>`;
     return;
   }
@@ -203,8 +204,7 @@ function renderMood() {
 }
 
 function render() {
-  renderGenres();
-  renderQuick();
+  renderFloatingMovies();
   renderSubs();
   renderResult();
   renderMood();
@@ -221,19 +221,14 @@ $("searchInput").addEventListener("keydown", (e) => {
   if (e.key === "Enter") search();
 });
 
-// One click listener handles every button that has data-action
 document.addEventListener("click", (e) => {
   const el = e.target.closest("[data-action]");
   if (!el) return;
   const value = el.dataset.value;
 
   switch (el.dataset.action) {
-    case "genre":
-      state.genre = value;
-      state.query = "";
-      $("searchInput").value = "";
-      break;
-    case "quick":
+    case "pick":
+    case "rec":
       state.query = value;
       $("searchInput").value = value;
       break;
@@ -242,11 +237,6 @@ document.addEventListener("click", (e) => {
       break;
     case "mood":
       state.mood = value;
-      break;
-    case "rec":
-      state.query = value;
-      state.genre = "All";
-      $("searchInput").value = value;
       break;
     case "notify": {
       const movie = findMovie();
