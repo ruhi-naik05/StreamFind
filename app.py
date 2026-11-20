@@ -28,6 +28,7 @@ PRICES = {
     "Animax": 245,
     "Muse India": 149,
     "Netflix Kids": 149,
+    "Crunchyroll Amazon Channel" : 199,
 }
 
 app = Flask(__name__)
