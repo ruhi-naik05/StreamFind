@@ -8,11 +8,26 @@ API_KEY=os.getenv("TMDB_API_KEY")
 
 PRICES = {
     "Netflix": 199,
+    "Netflix Standard with Ads": 149,
     "Amazon Prime Video": 299,
+    "Amazon Prime Video with Ads": 299,
     "Apple TV Plus": 199,
     "Disney Plus": 149,
     "JioHotstar": 149,
-    "Amazon Prime Video with Ads": 299,
+    "Lionsgate Play": 129,
+    "Zee5": 245,
+    "Sony Liv": 149,
+    "Discovery Plus": 99,
+    "Mubi": 199,
+    "MX Player": 132,
+    "Tubi TV": 199,
+    "Eros Now": 149,
+    "Hungama Play": 242,
+    "Crunchyroll": 199,
+    "Hidive": 149,
+    "Animax": 245,
+    "Muse India": 149,
+    "Netflix Kids": 149,
 }
 
 app = Flask(__name__)
@@ -36,7 +51,7 @@ def search():
         f"https://api.themoviedb.org/3/movie/{movie['id']}/watch/providers",
         params={"api_key": API_KEY},
         timeout=10,
-    )
+    ) 
     providers = providers_response.json()["results"].get("IN", {})
     platforms = []
     for p in providers.get("flatrate", []):
