@@ -1,67 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StreamFind</title>
-
-  <!-- Fonts from Google (needs internet) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@800;900&family=Yellowtail&family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
-
-  <!-- Our own files -->
-  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="page">
 
-  <!-- ===== TOP BAR ===== -->
-  <header class="topbar">
-    <h1 class="logo">Stream<span>Find</span></h1>
-    <span class="badge">Now showing · India</span>
-  </header>
-  <div class="dots"></div>
+    <header class="top">
+      <span class="logo">StreamFind</span>
+      <span class="region">Region: India</span>
+    </header>
 
-  <!-- ===== HERO ===== -->
-  <section class="hero">
-    <div class="reel">🎞️</div>
-    <p class="script">Find it.</p>
-    <h2 class="headline">Compare it.<br />Then <em>watch it.</em></h2>
-    <p class="intro">Type a movie to see whether it's streaming in India, and what each platform costs a month, cheapest first.</p>
-  </section>
+    <section class="hero">
+      <h1>Find where to watch it. Pay the least to do it.</h1>
+      <p class="muted big">Search a movie, see which platforms in India carry it, and get them ranked from cheapest to most expensive. Mark what you already subscribe to and we skip the extra spending.</p>
 
-  <div class="filmstrip"></div>
-
-  <main>
-    <!-- ===== SEARCH BOX ===== -->
-    <section class="box-office">
-      <p class="label">Box office · What are we watching?</p>
       <div class="search-row">
-        <input id="searchInput" type="text" placeholder="Type a movie name" value="Interstellar" />
-        <button id="searchBtn">Search</button>
+        <input id="searchInput" type="search" placeholder="Search a movie or show…" aria-label="Search for a movie or show" value="Monsoon Express">
+        <button id="searchBtn" class="btn-main" type="button">Search</button>
       </div>
-      <div id="quickPicks" class="chips"></div>
+
+      <div class="chip-row"><span class="muted small">Genre:</span><span id="genres" class="chip-row"></span></div>
+      <div class="chip-row"><span class="muted small">Try:</span><span id="quick" class="chip-row"></span></div>
     </section>
 
-    <!-- ===== RESULT (filled by script.js) ===== -->
-    <section id="result"></section>
+    <main class="layout">
+      <aside class="card side">
+        <h2>My subscriptions</h2>
+        <p class="muted small">Tap the platforms you already pay for.</p>
+        <div id="subs" class="subs"></div>
+      </aside>
 
-    <!-- ===== MOOD PICKS ===== -->
-    <section class="moods">
-      <h2 class="mood-title">Not sure what <em>to watch?</em></h2>
-      <p class="intro">Pick a mood. We'll stick to the platforms you've switched on below.</p>
-      <div id="moodChips" class="chips"></div>
-      <div id="moodCards" class="cards"></div>
+      <section id="result" class="result"></section>
+    </main>
+
+    <section class="card mood">
+      <h2>Not sure what to watch?</h2>
+      <p class="muted">Pick your mood and we'll suggest something. <span id="moodLine"></span></p>
+      <div id="moods" class="chip-row"></div>
+      <div id="recs" class="recs"></div>
     </section>
 
-    <p class="footer">★ ★ ★ ★ ★ StreamFind · Demo data ★ ★ ★ ★</p>
-  </main>
+    <footer class="muted small foot">
+      Demo data only. In the finished app, availability comes live from the TMDB API for the India region.
+    </footer>
 
-  <!-- ===== "I HAVE" BAR (sticks to the bottom) ===== -->
-  <nav class="have-bar">
-    <span class="have-label">I have</span>
-    <div id="platformChips" class="chips nowrap"></div>
-  </nav>
-
+  </div>
   <script src="script.js"></script>
 </body>
 </html>
