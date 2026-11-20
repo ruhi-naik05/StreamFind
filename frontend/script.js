@@ -194,10 +194,11 @@ function renderMood() {
     const status = out
       ? `Available in India, from ₹${from} per month`
       : `Not in India yet. Best guess: ${m.estimate} on ${m.estPlatform}.`;
+    const statusClass = out ? "rec-status" : "rec-status--upcoming";
     return `<div class="rec">
               <h3>${m.title}</h3>
               <span class="muted small">${m.meta}</span>
-              <span class="small">${status}</span>
+              <span class="small ${statusClass}">${status}</span>
               <a class="btn-link" href="#result" data-action="rec" data-value="${m.title}">See details</a>
             </div>`;
   }).join("");
