@@ -78,6 +78,35 @@ input:focus, button:focus-visible, a:focus-visible {
   outline-offset: 2px;
 }
 
+/* Floating movie pills below the search bar */
+.floating-movies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.float-movie {
+  padding: 9px 16px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 6px 16px rgba(59, 31, 74, 0.08);
+  transform: translateY(0);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+.float-movie:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: 0 10px 20px rgba(181, 23, 158, 0.15);
+}
+.float-movie.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
 /* ---------- Buttons and chips ---------- */
 button { font: inherit; cursor: pointer; }
 
