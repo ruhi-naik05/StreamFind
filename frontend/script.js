@@ -1,210 +1,260 @@
-// =====================================================
-// 1. DATA  (demo data - replace with your backend later)
-// =====================================================
+// ===================== DEMO DATA =====================
+// In your real project, this comes from your Flask backend (TMDB API).
+// Example: fetch("/api/search?q=" + query).then(r => r.json())
 
-// Monthly price of each platform in rupees
-const PRICES = {
-  "Netflix": 199,
-  "Prime Video": 299,
-  "JioHotstar": 149,
-  "Apple TV+": 99,
-  "Zee5": 99,
-  "SonyLIV": 299,
+const PLATFORMS = {
+  netflix: { name: "Netflix",     price: 199, url: "https://www.netflix.com" },
+  prime:   { name: "Prime Video", price: 149, url: "https://www.primevideo.com" },
+  hotstar: { name: "JioHotstar",  price: 149, url: "https://www.hotstar.com" },
+  zee5:    { name: "ZEE5",        price: 99,  url: "https://www.zee5.com" },
+  sonyliv: { name: "SonyLIV",     price: 99,  url: "https://www.sonyliv.com" }
 };
 
-// Which movies are on which platforms
-const MOVIES = {
-  "interstellar":   { title: "Interstellar",   year: 2014, platforms: ["JioHotstar", "Prime Video"] },
-  "inception":      { title: "Inception",      year: 2010, platforms: ["Netflix", "Prime Video"] },
-  "dune: part two": { title: "Dune: Part Two", year: 2024, platforms: ["Prime Video", "Apple TV+"] },
-  "oppenheimer":    { title: "Oppenheimer",    year: 2023, platforms: ["JioHotstar"] },
-};
+// on: [] means NOT released in India yet -> shows the estimate + notify card
+const MOVIES = [
+  { title: "Monsoon Express", genre: "Thriller",    meta: "2024 · Thriller · 2h 05m",
+    overview: "A night train, a missing ledger and twelve passengers who all have a reason to lie.",
+    on: ["netflix", "prime", "zee5"], moods: ["Excited"] },
+  { title: "The Last Reel",   genre: "Drama",       meta: "2023 · Drama · 1h 52m",
+    overview: "A small-town projectionist fights to keep the town cinema open for one more season.",
+    on: ["prime", "sonyliv", "hotstar", "netflix"], moods: ["Sad"] },
+  { title: "Coastal Road",    genre: "Adventure",   meta: "2025 · Adventure · 2h 18m",
+    overview: "Two cousins drive the full length of the western coast in a borrowed jeep.",
+    on: ["hotstar", "zee5"], moods: ["Happy", "Excited"] },
+  { title: "Sunday Chai",     genre: "Comedy",      meta: "2024 · Comedy · 1h 38m",
+    overview: "A family reunion goes sideways over one very long cup of tea.",
+    on: ["zee5", "sonyliv"], moods: ["Happy", "Relaxed", "Romantic"] },
+  { title: "Letters to Goa",  genre: "Romance",     meta: "2023 · Romance · 2h 02m",
+    overview: "Two pen pals finally meet on a rainy beach town weekend.",
+    on: ["netflix", "hotstar"], moods: ["Romantic", "Sad"] },
+  { title: "Northern Lights", genre: "Documentary", meta: "Upcoming · Documentary · 1h 40m",
+    overview: "A year of aurora chasing across the Arctic.",
+    on: [], estimate: "January 2027", estPlatform: "Netflix", moods: ["Relaxed"] },
+  { title: "Midnight Ferry",  genre: "Thriller",    meta: "Upcoming · Thriller · 1h 58m",
+    overview: "The last ferry of the night carries one passenger too many.",
+    on: [], estimate: "March 2027", estPlatform: "Prime Video", moods: ["Excited"] }
+];
 
-// Mood picks: each mood has a few movies, each with ONE platform
+const GENRES = ["All", "Thriller", "Drama", "Adventure", "Documentary", "Comedy", "Romance"];
+
 const MOODS = {
-  "Feel-good": [
-    { title: "Spirited Away", year: 2001, platform: "Netflix" },
-    { title: "The Intern",    year: 2015, platform: "Netflix" },
-    { title: "Chhichhore",    year: 2019, platform: "JioHotstar" },
-    { title: "Paddington 2",  year: 2017, platform: "Prime Video" },
-  ],
-  "Edge of my seat": [
-    { title: "Drishyam",   year: 2015, platform: "Prime Video" },
-    { title: "Andhadhun",  year: 2018, platform: "Netflix" },
-    { title: "Tumbbad",    year: 2018, platform: "Prime Video" },
-  ],
-  "Mind-bending": [
-    { title: "Inception",    year: 2010, platform: "Netflix" },
-    { title: "Interstellar", year: 2014, platform: "JioHotstar" },
-    { title: "Dark Matter",  year: 2024, platform: "Apple TV+" },
-  ],
-  "Make me cry": [
-    { title: "Taare Zameen Par", year: 2007, platform: "JioHotstar" },
-    { title: "Coco",             year: 2017, platform: "JioHotstar" },
-    { title: "Masaan",           year: 2015, platform: "Netflix" },
-  ],
+  Happy:    "Light, feel-good picks.",
+  Sad:      "For a good cry or a heart-to-heart.",
+  Excited:  "Fast, edge-of-your-seat picks.",
+  Relaxed:  "Calm and easy watching.",
+  Romantic: "Sweet stories for a cosy night."
 };
 
-// =====================================================
-// 2. STATE  (things that change while using the page)
-// =====================================================
-let myPlatforms = ["Netflix"];   // platforms the user has switched on
-let currentMovie = null;         // movie currently shown in the result
-let currentMood = "Feel-good";   // mood currently selected
+// ===================== STATE =====================
+const state = {
+  query: "Monsoon Express",
+  genre: "All",
+  mood: "Happy",
+  subs: { prime: true },   // platforms the user already subscribes to
+  notified: {}             // movies the user wants alerts for
+};
 
-// =====================================================
-// 3. GRAB ELEMENTS FROM THE HTML
-// =====================================================
-const searchInput   = document.getElementById("searchInput");
-const searchBtn     = document.getElementById("searchBtn");
-const quickPicks    = document.getElementById("quickPicks");
-const resultBox     = document.getElementById("result");
-const moodChips     = document.getElementById("moodChips");
-const moodCards     = document.getElementById("moodCards");
-const platformChips = document.getElementById("platformChips");
+const $ = (id) => document.getElementById(id);
 
-// =====================================================
-// 4. HELPER: make a chip button
-// =====================================================
-function makeChip(text, isOn, onClick) {
-  const btn = document.createElement("button");
-  btn.className = "chip" + (isOn ? " on" : "");
-  btn.textContent = text;
-  btn.addEventListener("click", onClick);
-  return btn;
+// ===================== HELPERS =====================
+function movieMatchesGenre(m) {
+  return state.genre === "All" || m.genre === state.genre;
 }
 
-// =====================================================
-// 5. FIND A MOVIE
-// =====================================================
-// Right now this uses the demo data above.
-// To use YOUR backend, swap the body of this function for something like:
-//
-//   const res = await fetch("http://localhost:3000/api/search?title=" + encodeURIComponent(title));
-//   return await res.json();   // must look like { title, year, platforms: ["Netflix", ...] }
-//
-async function findMovie(title) {
-  return MOVIES[title.trim().toLowerCase()] || null;
+function findMovie() {
+  const q = state.query.trim().toLowerCase();
+  return MOVIES.find((m) => movieMatchesGenre(m) && m.title.toLowerCase().includes(q));
 }
 
-// =====================================================
-// 6. SHOW THE SEARCH RESULT
-// =====================================================
-async function search(title) {
-  currentMovie = await findMovie(title);
-  showResult();
+function chip(label, active, action, value) {
+  return `<button type="button" class="chip ${active ? "active" : ""}"
+            aria-pressed="${active}" data-action="${action}" data-value="${value}">${label}</button>`;
 }
 
-function showResult() {
-  // Nothing searched yet
-  if (!currentMovie && !searchInput.value) { resultBox.innerHTML = ""; return; }
-
-  // Movie not found
-  if (!currentMovie) {
-    resultBox.innerHTML = '<p class="note"></p>';
-    resultBox.querySelector(".note").textContent =
-      "No data for \"" + searchInput.value + "\" yet. Try one of the movies above.";
-    return;
-  }
-
-  // Sort the platforms: cheapest first
-  const sorted = [...currentMovie.platforms].sort((a, b) => PRICES[a] - PRICES[b]);
-
-  // Which of those does the user already have?
-  const owned = sorted.filter(name => myPlatforms.includes(name));
-
-  // Write the message
-  let message;
-  if (owned.length > 0) {
-    message = "Good news! You can watch it on " + owned.join(" or ") + " right now.";
-  } else {
-    message = "Not on your platforms. Cheapest way to watch: " + sorted[0] + " at ₹" + PRICES[sorted[0]] + "/mo.";
-  }
-
-  // Build the HTML
-  let html = `<h2 class="movie-title">${currentMovie.title} <small>${currentMovie.year}</small></h2>`;
-  html += `<p class="note">${message}</p>`;
-
-  sorted.forEach((name, index) => {
-    const isMine = myPlatforms.includes(name) ? " mine" : "";
-    const stamp = index === 0 ? '<span class="stamp">Cheapest</span>' : "";
-    html += `
-      <div class="ticket${isMine}">
-        <h3>${name}${stamp}</h3>
-        <div class="price">₹${PRICES[name]}<small>/mo</small></div>
-      </div>`;
-  });
-
-  resultBox.innerHTML = html;
+// ===================== RENDER =====================
+function renderGenres() {
+  $("genres").innerHTML = GENRES.map((g) => chip(g, state.genre === g, "genre", g)).join("");
 }
 
-// =====================================================
-// 7. MOOD PICKS
-// =====================================================
-function showMoods() {
-  // Mood buttons
-  moodChips.innerHTML = "";
-  Object.keys(MOODS).forEach(mood => {
-    moodChips.appendChild(makeChip(mood, mood === currentMood, () => {
-      currentMood = mood;
-      showMoods();
-    }));
-  });
+function renderQuick() {
+  $("quick").innerHTML = MOVIES.filter(movieMatchesGenre)
+    .map((m) => chip(m.title, false, "quick", m.title)).join("");
+}
 
-  // Only movies on platforms the user has
-  const picks = MOODS[currentMood].filter(m => myPlatforms.includes(m.platform));
+function renderSubs() {
+  $("subs").innerHTML = Object.keys(PLATFORMS).map((id) => {
+    const on = !!state.subs[id];
+    return `<button type="button" class="sub ${on ? "active" : ""}" aria-pressed="${on}"
+              data-action="sub" data-value="${id}">
+              <span>${PLATFORMS[id].name}</span>
+              <span>${on ? "Subscribed" : "Not subscribed"}</span>
+            </button>`;
+  }).join("");
+}
 
-  if (picks.length === 0) {
-    moodCards.innerHTML = '<p class="empty">Nothing here for your platforms. Switch one on below.</p>';
-    return;
-  }
+// Platform rows: cheapest first. Already-subscribed platforms cost 0 extra.
+function platformRows(movie) {
+  return movie.on
+    .map((id) => {
+      const p = PLATFORMS[id];
+      const subscribed = !!state.subs[id];
+      return { p, subscribed, extra: subscribed ? 0 : p.price };
+    })
+    .sort((a, b) => a.extra - b.extra || a.p.price - b.p.price);
+}
 
-  moodCards.innerHTML = picks.map(m => `
-    <div class="film-card">
-      <span class="year">${m.year}</span>
-      <h3>${m.title}</h3>
-      <span>On ${m.platform}</span>
+function releasedHTML(movie) {
+  const rows = platformRows(movie);
+  const covered = rows.filter((r) => r.subscribed).length;
+  const cheapest = rows.slice().sort((a, b) => a.p.price - b.p.price)[0].p;
+
+  const summary = covered > 0
+    ? `You already subscribe to ${covered} of ${rows.length} platforms carrying this title, so you can watch with no extra spending.`
+    : `Nothing you subscribe to carries this title. The cheapest way in is ${cheapest.name} at ₹${cheapest.price} per month.`;
+
+  const rowsHTML = rows.map((r, i) => `
+    <div class="row">
+      <div class="rank">${i + 1}</div>
+      <div class="row-info">
+        <span class="row-name">${r.p.name}</span>
+        ${i === 0 ? '<span class="tag tag-best">Best pick</span>' : ""}
+        ${r.subscribed ? '<span class="tag tag-covered">Already covered</span>' : ""}
+        <div class="muted small">${r.subscribed ? "Included in your current plan" : "Subscription needed"}</div>
+      </div>
+      <div class="row-price">
+        <span class="price">${r.subscribed ? "₹0 extra" : "₹" + r.p.price}</span>
+        <span class="muted small">${r.subscribed ? "you already pay" : "per month"}</span>
+      </div>
+      <a class="btn-link" href="${r.p.url}" target="_blank" rel="noopener">Watch on ${r.p.name}</a>
     </div>`).join("");
+
+  return {
+    inCard: `<div><span class="badge-ok">Available in India</span></div>
+             <div class="summary">${summary}</div>`,
+    after: `<div class="list-head">
+              <h3>Available on, cheapest first</h3>
+              <span class="muted small">Prices are per month</span>
+            </div>${rowsHTML}`
+  };
 }
 
-// =====================================================
-// 8. PLATFORM BAR ("I have ...")
-// =====================================================
-function showPlatforms() {
-  platformChips.innerHTML = "";
-  Object.keys(PRICES).forEach(name => {
-    const isOn = myPlatforms.includes(name);
-    platformChips.appendChild(makeChip(name, isOn, () => {
-      // add or remove this platform
-      if (isOn) {
-        myPlatforms = myPlatforms.filter(p => p !== name);
-      } else {
-        myPlatforms.push(name);
-      }
-      showPlatforms();
-      showResult();   // update the message in the result
-      showMoods();    // update the mood picks
-    }));
-  });
+function upcomingHTML(movie) {
+  const on = !!state.notified[movie.title];
+  const action = on
+    ? `<div class="notified">
+         <div class="ok">You're on the list. We'll alert you the second it becomes available in India.</div>
+         <button type="button" class="btn-cancel" data-action="notify">Cancel alert</button>
+       </div>`
+    : `<button type="button" class="btn-notify" data-action="notify">Notify me when it's available</button>`;
+
+  return `<div class="upcoming">
+            <span class="pill">NOT IN INDIA YET</span>
+            <span class="muted small">Our best guess</span>
+            <span class="big-date">${movie.estimate}</span>
+            <span>Most likely on <b>${movie.estPlatform}</b></span>
+            <p>It's already on streaming abroad, and ${movie.estPlatform} usually brings these over within a couple of months. This is an estimate, not a confirmed date.</p>
+            ${action}
+          </div>`;
 }
 
-// =====================================================
-// 9. START EVERYTHING
-// =====================================================
-// Quick-pick buttons under the search box
-Object.values(MOVIES).forEach(movie => {
-  quickPicks.appendChild(makeChip(movie.title, false, () => {
-    searchInput.value = movie.title;
-    search(movie.title);
-  }));
+function renderResult() {
+  const movie = findMovie();
+  const box = $("result");
+
+  if (!movie) {
+    box.innerHTML = `<div class="empty">
+        <h2>No match for “${state.query || state.genre}”</h2>
+        <p class="muted">Check the spelling or pick one of the suggestions above.</p>
+      </div>`;
+    return;
+  }
+
+  const released = movie.on.length > 0;
+  const parts = released ? releasedHTML(movie) : { inCard: "", after: upcomingHTML(movie) };
+
+  box.innerHTML = `
+    <div class="card movie">
+      <h2>${movie.title}</h2>
+      <p class="muted small">${movie.meta}</p>
+      <p>${movie.overview}</p>
+      ${parts.inCard}
+    </div>
+    ${released ? `<div style="display:flex;flex-direction:column;gap:12px">${parts.after}</div>` : parts.after}`;
+}
+
+function renderMood() {
+  $("moodLine").textContent = MOODS[state.mood];
+  $("moods").innerHTML = Object.keys(MOODS)
+    .map((m) => chip(m, state.mood === m, "mood", m)).join("");
+
+  $("recs").innerHTML = MOVIES.filter((m) => m.moods.includes(state.mood)).map((m) => {
+    const out = m.on.length > 0;
+    const from = out ? Math.min(...m.on.map((id) => PLATFORMS[id].price)) : 0;
+    const status = out
+      ? `Available in India, from ₹${from} per month`
+      : `Not in India yet. Best guess: ${m.estimate} on ${m.estPlatform}.`;
+    return `<div class="rec">
+              <h3>${m.title}</h3>
+              <span class="muted small">${m.meta}</span>
+              <span class="small">${status}</span>
+              <a class="btn-link" href="#result" data-action="rec" data-value="${m.title}">See details</a>
+            </div>`;
+  }).join("");
+}
+
+function render() {
+  renderGenres();
+  renderQuick();
+  renderSubs();
+  renderResult();
+  renderMood();
+}
+
+// ===================== EVENTS =====================
+function search() {
+  state.query = $("searchInput").value;
+  render();
+}
+
+$("searchBtn").addEventListener("click", search);
+$("searchInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") search();
 });
 
-// Search button + Enter key
-searchBtn.addEventListener("click", () => search(searchInput.value));
-searchInput.addEventListener("keydown", event => {
-  if (event.key === "Enter") search(searchInput.value);
+// One click listener handles every button that has data-action
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-action]");
+  if (!el) return;
+  const value = el.dataset.value;
+
+  switch (el.dataset.action) {
+    case "genre":
+      state.genre = value;
+      state.query = "";
+      $("searchInput").value = "";
+      break;
+    case "quick":
+      state.query = value;
+      $("searchInput").value = value;
+      break;
+    case "sub":
+      state.subs[value] = !state.subs[value];
+      break;
+    case "mood":
+      state.mood = value;
+      break;
+    case "rec":
+      state.query = value;
+      state.genre = "All";
+      $("searchInput").value = value;
+      break;
+    case "notify": {
+      const movie = findMovie();
+      if (movie) state.notified[movie.title] = !state.notified[movie.title];
+      break;
+    }
+  }
+  render();
 });
 
-showPlatforms();
-showMoods();
-search(searchInput.value);   // show Interstellar on first load
+render();
